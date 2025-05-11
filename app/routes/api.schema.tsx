@@ -1,48 +1,42 @@
-import { LoaderFunctionArgs } from "@remix-run/node";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "@remix-run/react";
 import { schema } from "~/lib/schema";
+import { schemaToJsonLd, schemaToXml, schemaToTurtle } from "~/lib/format-converters";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const acceptHeader = request.headers.get("Accept") || "application/json";
-  const baseUrl = new URL(request.url).origin + "/";
+export default function ApiSchemaRoute() {
+  const [searchParams] = useSearchParams();
+  const format = searchParams.get("format") || "json";
+  const [content, setContent] = useState("");
+  const [contentType, setContentType] = useState("application/json");
   
-  // Content negotiation for the entire schema
-  if (acceptHeader.includes("application/ld+json")) {
-    return new Response(schemaToJsonLd(schema, { baseUrl, pretty: true }), {
-      headers: {
-        "Content-Type": "application/ld+json",
-        "Access-Control-Allow-Origin": "*"
-      }
-    });
-  } else if (acceptHeader.includes("application/xml") || acceptHeader.includes("text/xml")) {
-    return new Response(schemaToXml(schema, { baseUrl }), {
-      headers: {
-        "Content-Type": "application/xml; charset=utf-8",
-        "Access-Control-Allow-Origin": "*"
-      }
-    });
-  } else if (acceptHeader.includes("text/turtle")) {
-    return new Response(schemaToTurtle(schema, { baseUrl }), {
-      headers: {
-        "Content-Type": "text/turtle",
-        "Access-Control-Allow-Origin": "*"
-      }
-    });
-  } else {
-    // Default to JSON
-    return new Response(
-      JSON.stringify(schema, null, 2), 
-      {
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          "Access-Control-Allow-Origin": "*"
-        }
-      }
-    );
-  }
+  useEffect(() => {
+    const baseUrl = window.location.origin + "/";
+    
+    // Generate content based on requested format
+    if (format === "jsonld") {
+      setContent(schemaToJsonLd(schema, { baseUrl, pretty: true }));
+      setContentType("application/ld+json");
+    } else if (format === "xml") {
+      setContent(schemaToXml(schema, { baseUrl }));
+      setContentType("application/xml");
+    } else if (format === "turtle") {
+      setContent(schemaToTurtle(schema, { baseUrl }));
+      setContentType("text/turtle");
+    } else {
+      // Default to JSON
+      setContent(JSON.stringify(schema, null, 2));
+      setContentType("application/json");
+    }
+  }, [format]);
+
+  return (
+    <pre className="p-4 overflow-auto bg-card border rounded-md text-sm whitespace-pre-wrap">
+      {content}
+    </pre>
+  );
 }
 
 // Helper functions for format conversions
-
 function schemaToJsonLd(schema: any, options: { baseUrl?: string; pretty?: boolean } = {}) {
   const baseUrl = options.baseUrl || "http://oerschema.org/";
   

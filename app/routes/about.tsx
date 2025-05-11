@@ -1,15 +1,10 @@
-import { json } from "@remix-run/node";
-import type { MetaFunction } from "@remix-run/node";
+import type { MetaFunction } from "@remix-run/react";
 
 export const meta: MetaFunction = () => {
   return [
     { title: "About - OER Schema" },
     { name: "description", content: "About the Open Educational Resources Schema" },
   ];
-};
-
-export const loader = async () => {
-  return json({});
 };
 
 export default function AboutPage() {

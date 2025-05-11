@@ -22,3 +22,8 @@ export interface Schema {
   classes: Record<string, SchemaClass>;
   properties: Record<string, SchemaProperty>;
 }
+
+// Additional type aliases to match function signatures
+export type ClassData = SchemaClass;
+export type PropertyData = SchemaProperty;
+export type SchemaData = Schema;

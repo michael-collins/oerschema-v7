@@ -1,73 +1,87 @@
-import React from "react";
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link } from "@remix-run/react";
+import React, { useState, useEffect } from "react";
+import { useParams, Link } from "@remix-run/react";
 import { schema } from "~/lib/schema";
 import { Button } from "~/components/ui/button";
 import { SchemaExamples } from "~/components/schema-examples";
 import { ApiCard } from "~/components/api-card";
 
-export async function loader({ params }: LoaderFunctionArgs) {
-  const className = params.name;
-  const classData = schema.classes[className as string];
-
-  if (!classData) {
-    throw new Response("Not Found", { status: 404 });
-  }
-
-  // Find subclasses that inherit from this class
-  const subClasses = Object.entries(schema.classes)
-    .filter(([_, data]) => data.subClassOf.includes(className as string))
-    .map(([name, data]) => ({ name, label: data.label }));
-
-  // Get properties with their details by class inheritance
-  const propertiesByClass = new Map();
-  
-  // Start with the current class
-  if (classData.properties.length > 0) {
-    propertiesByClass.set(className, classData.properties.map(propName => {
-      const propData = schema.properties[propName];
-      return {
-        name: propName,
-        data: propData
-      };
-    }));
-  }
-  
-  // Get inherited properties from parent classes
-  const getParentClasses = (name, visited = new Set()) => {
-    if (visited.has(name)) return; // Avoid circular references
-    visited.add(name);
-    
-    const cls = schema.classes[name];
-    if (!cls) return;
-    
-    cls.subClassOf.forEach(parent => {
-      // Only include schema classes, not external ones like schema.org
-      if (parent && !parent.startsWith('http://') && schema.classes[parent]) {
-        const parentClass = schema.classes[parent];
-        if (parentClass.properties.length > 0) {
-          const props = parentClass.properties.map(propName => {
-            const propData = schema.properties[propName];
-            return {
-              name: propName,
-              data: propData
-            };
-          });
-          
-          propertiesByClass.set(parent, props);
-        }
-        getParentClasses(parent, visited);
-      }
-    });
-  };
-  
-  getParentClasses(className);
-
-  return json({ classData, className, subClasses, propertiesByClass: Array.from(propertiesByClass.entries()) });
-}
-
 export default function ClassPage() {
-  const { classData, className, subClasses, propertiesByClass } = useLoaderData<typeof loader>();
+  const params = useParams();
+  const className = params.name || '';
+  const [data, setData] = useState<{
+    classData: any;
+    subClasses: { name: string; label: string }[];
+    propertiesByClass: Array<[string, any[]]>;
+  } | null>(null);
+  
+  useEffect(() => {
+    // Client-side data loading logic (converted from the server-side loader)
+    if (!className) return;
+    
+    const classData = schema.classes[className];
+    if (!classData) return;
+    
+    // Find subclasses that inherit from this class
+    const subClasses = Object.entries(schema.classes)
+      .filter(([_, data]) => data.subClassOf.includes(className))
+      .map(([name, data]) => ({ name, label: data.label }));
+  
+    // Get properties with their details by class inheritance
+    const propertiesByClass = new Map();
+    
+    // Start with the current class
+    if (classData.properties.length > 0) {
+      propertiesByClass.set(className, classData.properties.map(propName => {
+        const propData = schema.properties[propName];
+        return {
+          name: propName,
+          data: propData
+        };
+      }));
+    }
+    
+    // Get inherited properties from parent classes
+    const getParentClasses = (name: string, visited = new Set()) => {
+      if (visited.has(name)) return; // Avoid circular references
+      visited.add(name);
+      
+      const cls = schema.classes[name];
+      if (!cls) return;
+      
+      cls.subClassOf.forEach(parent => {
+        // Only include schema classes, not external ones like schema.org
+        if (parent && !parent.startsWith('http://') && schema.classes[parent]) {
+          const parentClass = schema.classes[parent];
+          if (parentClass.properties.length > 0) {
+            const props = parentClass.properties.map(propName => {
+              const propData = schema.properties[propName];
+              return {
+                name: propName,
+                data: propData
+              };
+            });
+            
+            propertiesByClass.set(parent, props);
+          }
+          getParentClasses(parent, visited);
+        }
+      });
+    };
+    
+    getParentClasses(className);
+    
+    setData({
+      classData,
+      subClasses,
+      propertiesByClass: Array.from(propertiesByClass.entries())
+    });
+  }, [className]);
+  
+  if (!data || !data.classData) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  const { classData, subClasses, propertiesByClass } = data;
 
   return (
     <div className="py-6 md:py-8">
@@ -94,7 +108,7 @@ export default function ClassPage() {
                 <div>
                   <h3 className="font-semibold text-lg mb-2">Parent Classes</h3>
                   <ul className="list-disc ml-6 space-y-1">
-                    {classData.subClassOf.map((parent) => (
+                    {classData.subClassOf.map((parent: string) => (
                       <li key={parent} className="mt-1">
                         {parent.startsWith('http://') ? (
                           <a 

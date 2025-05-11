@@ -1,30 +1,38 @@
-import React from "react";
-import { json } from "@remix-run/node";
-import { useLoaderData, Link } from "@remix-run/react";
+import React, { useState, useEffect } from "react";
+import { Link } from "@remix-run/react";
 import { schema } from "~/lib/schema";
 import { SchemaTree } from "~/components/schema-tree";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
-export async function loader() {
-  // Transform schema data for rendering
-  const classes = Object.entries(schema.classes).map(([name, data]) => ({
-    name,
-    ...data
-  }));
-
-  const properties = Object.entries(schema.properties).map(([name, data]) => ({
-    name,
-    ...data
-  }));
-
-  return json({
-    classes,
-    properties
-  });
-}
-
 export default function SchemaPage() {
-  const { classes, properties } = useLoaderData<typeof loader>();
+  const [data, setData] = useState<{
+    classes: any[];
+    properties: any[];
+  } | null>(null);
+  
+  useEffect(() => {
+    // Transform schema data for rendering - client-side version of the loader
+    const classes = Object.entries(schema.classes).map(([name, data]) => ({
+      name,
+      ...data
+    }));
+
+    const properties = Object.entries(schema.properties).map(([name, data]) => ({
+      name,
+      ...data
+    }));
+
+    setData({
+      classes,
+      properties
+    });
+  }, []);
+  
+  if (!data) {
+    return <div className="p-6">Loading...</div>;
+  }
+  
+  const { classes, properties } = data;
   
   return (
     <div className="py-6 md:py-8">

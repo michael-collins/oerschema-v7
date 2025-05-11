@@ -16,6 +16,7 @@ export default defineConfig({
         v3_relativeSplatPath: true,
         v3_throwAbortReason: true,
       },
+      ssr: false,
       // Set the base path for server-side as well
       serverBuildPath: "build/server/index.js",
       // Ensure assets are referenced with correct base path
